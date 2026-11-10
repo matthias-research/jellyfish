@@ -4,7 +4,7 @@ JavaScript reconstruction of JellyFish Light 3.5 Build 268, using recovered nati
 
 ## Run
 
-Requires Node.js 22.14 or newer. No npm dependencies or build step:
+Requires Node.js 22.14 or newer. Local play requires no dependency installation or build step:
 
 ```sh
 npm start
@@ -20,6 +20,18 @@ Settings (F9) includes **Pause after JellyFish rolls** (0ï¿½5 seconds) and **
 Implemented controls include human/computer or two-player matches, money play, cube take/drop, Crawford games, resignation, position editing, pip counts, hints, ranked moves, evaluation, whole-turn takeback/step-forward, board reversal, JSON saves, printing, text logs, statistics, and seeded cubeless rollouts. Computation runs in a Web Worker to keep the page responsive. Levels 1â€“7 use the recovered small/full evaluators and lookahead patterns. Levels 1 and 2 include the original style of evaluation noise, with a fresh browser random stream.
 
 Space rolls or finishes a turn. F2 opens a new game, F4 statistics, F9 settings. Ctrl+Z undoes a checker move; Ctrl+K/Ctrl+T step backward/forward through recorded turns. The menus list the remaining actions.
+
+## Deployment
+
+Hosted on Cloudflare Workers at **https://jellyfish.matthi3010.workers.dev**, in the same account as `sws-platinum`.
+
+```sh
+npm ci
+npx wrangler login
+npm run deploy
+```
+
+`npm run deploy` builds and publishes only `dist/`: HTML, CSS, JavaScript, the logo, and required AI data. Original executables, analysis, tests, and local files are excluded. `npm run deploy:preview` runs the Cloudflare preview locally. Deployment is manual; pushing to GitHub does not publish updates.
 
 ## Validation
 

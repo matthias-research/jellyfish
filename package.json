@@ -1,5 +1,16 @@
 {
-  "name": "jellyfish-browser", "version": "0.1.0", "private": true,
+  "name": "jellyfish-browser",
+  "version": "0.1.0",
+  "private": true,
   "type": "module",
-  "scripts": {"start": "node tools/serve.mjs", "test": "node --test --experimental-test-isolation=none tests/*.test.js"}
+  "scripts": {
+    "start": "node tools/serve.mjs",
+    "test": "node --test --experimental-test-isolation=none tests/*.test.js",
+    "build": "node tools/build.mjs",
+    "deploy": "wrangler deploy",
+    "deploy:preview": "wrangler dev"
+  },
+  "devDependencies": {
+    "wrangler": "4.157.0"
+  }
 }
