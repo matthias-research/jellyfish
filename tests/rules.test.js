@@ -40,3 +40,17 @@ test('seeded complete matches preserve score and cube/Crawford invariants',()=>{
     assert.ok(m.matchWinner);assert.ok(m.scores[r.playerIndex(m.matchWinner)]>=target);
   }
 });
+
+test('gammons award two points undoubled and four after an accepted double',()=>{
+  for(const target of [0,7])for(const player of [1,-1])for(const doubled of [false,true]){
+    const b=player===1?board([[18,-15]]):board([[5,15]]);
+    let m=r.createMatch(target);
+    if(doubled)m=r.respondDouble(r.offerDouble(m,player),true);
+    const result=r.finishGame(m,b),points=doubled?4:2;
+    assert.equal(result.result.winner,player);
+    assert.equal(result.result.multiplier,2);
+    assert.equal(result.result.points,points);
+    assert.equal(result.scores[r.playerIndex(player)],points);
+    assert.equal(result.scores[r.playerIndex(-player)],0);
+  }
+});
