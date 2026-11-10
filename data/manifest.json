@@ -1,0 +1,37 @@
+[
+  {
+    "file": "bearoff.dat",
+    "bytes": 68381,
+    "sha256": "9683d9138477671763576fc4c7f7810a08016b6184e0f0ca428b2ef3d75c0a55"
+  },
+  {
+    "file": "jf300.dat",
+    "bytes": 31151,
+    "sha256": "aadd62cfbde5d42ad221159dcaacb74b2c2deacaf5eba2778a1ef4fe0616269e"
+  },
+  {
+    "file": "jf301.dat",
+    "bytes": 142996,
+    "sha256": "bea449f89bd74be17fe24949d8da1f4aceccd7e5ef63ea01989a916fbd215ae5"
+  },
+  {
+    "file": "jf302.dat",
+    "bytes": 122203,
+    "sha256": "4d30016fd105d5ca42aa257d1c3d878dcdcce2eeb3b28dee95777766cdc39b8a"
+  },
+  {
+    "file": "jf303.dat",
+    "bytes": 143324,
+    "sha256": "2f637470603832f7d3c8e1a028d49e22250978aa035ffe910bed372cc2bb4850"
+  },
+  {
+    "file": "jf304.dat",
+    "bytes": 21094,
+    "sha256": "2f4842d97a17d41463516bd2e3ea82187c0ba52b45f5c54a9d94fd92de87a927"
+  },
+  {
+    "file": "longbear.dat",
+    "bytes": 326395,
+    "sha256": "8edaa5a5e8461884d126b034cd4cbcbfbdea426d5031c940a2afb79486fef8ef"
+  }
+]

@@ -1,0 +1,80 @@
+[
+  {
+    "file": "bitmap-LOGOU-1044.png",
+    "width": 149,
+    "height": 105,
+    "sourceSHA256": "517d0a72acd5fad2411721d602b1f2c320ec9c1f4bb9f14baf146ecda3990089"
+  },
+  {
+    "file": "bitmap-TERN1D-1044.png",
+    "width": 33,
+    "height": 33,
+    "sourceSHA256": "a681ade0c3b84e73bfdbcd48cad54b6e0437a3076cfb9e13899b10e66ae89b34"
+  },
+  {
+    "file": "bitmap-TERN1U-1044.png",
+    "width": 33,
+    "height": 33,
+    "sourceSHA256": "7548c2f6b2161e462396ff15f9cfb2262f4cb7119f20d922ca835e71cd1469ec"
+  },
+  {
+    "file": "bitmap-TERN2D-1044.png",
+    "width": 33,
+    "height": 33,
+    "sourceSHA256": "1038b85e97c9d61766607013fc5e09aed03a0cbada49d20ce2460f6d8081335a"
+  },
+  {
+    "file": "bitmap-TERN2U-1044.png",
+    "width": 33,
+    "height": 33,
+    "sourceSHA256": "d25f535ec3b420453f4ae2ad4d709cee22875e88eeb7a0bd2a32535110a489c8"
+  },
+  {
+    "file": "bitmap-TERN3D-1044.png",
+    "width": 33,
+    "height": 33,
+    "sourceSHA256": "32c4997d046a67732d87287fff642eaf1e2fd96906dffd85a16a0945d126bfbf"
+  },
+  {
+    "file": "bitmap-TERN3U-1044.png",
+    "width": 33,
+    "height": 33,
+    "sourceSHA256": "01864bdb005105d446db4701de32d63e38305667ea9f3fbf0c81d81a0379de8c"
+  },
+  {
+    "file": "bitmap-TERN4D-1044.png",
+    "width": 33,
+    "height": 33,
+    "sourceSHA256": "4928973d433ef8cdab6e3588c173c0fe0bf052670af15b9bc3a1a2d3b4901a39"
+  },
+  {
+    "file": "bitmap-TERN4U-1044.png",
+    "width": 33,
+    "height": 33,
+    "sourceSHA256": "28127365793bf2be4271e3d165b389292c229b975fb4b5f0725ec5e5a3c31e7c"
+  },
+  {
+    "file": "bitmap-TERN5D-1044.png",
+    "width": 33,
+    "height": 33,
+    "sourceSHA256": "807c5137a535aac878f33658fd5c6447992178c6ec51891753a997265195c833"
+  },
+  {
+    "file": "bitmap-TERN5U-1044.png",
+    "width": 33,
+    "height": 33,
+    "sourceSHA256": "860fa2baaa4be3e645682fa7b4e4cf06b6ea4a9cbd9109323dbc94363a318ef1"
+  },
+  {
+    "file": "bitmap-TERN6D-1044.png",
+    "width": 33,
+    "height": 33,
+    "sourceSHA256": "2305ae04b9e9be5d388bc6dadf03c75911c0da3c54f28961dfeb6c81fcadb98d"
+  },
+  {
+    "file": "bitmap-TERN6U-1044.png",
+    "width": 33,
+    "height": 33,
+    "sourceSHA256": "8cc4a043ce1b89056aef1b42108bf1313203e24838366901bb6d4d0c2c8d085d"
+  }
+]

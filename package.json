@@ -1,0 +1,5 @@
+{
+  "name": "jellyfish-browser", "version": "0.1.0", "private": true,
+  "type": "module",
+  "scripts": {"start": "node tools/serve.mjs", "test": "node --test --experimental-test-isolation=none tests/*.test.js"}
+}
