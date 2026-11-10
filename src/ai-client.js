@@ -11,3 +11,5 @@ export const cubeAdvice=(...args)=>call('cubeAdvice',...args);
 
 export const rankTurns=(...args)=>call('rankTurns',...args);
 export const rollout=(...args)=>call('rollout',...args);
+
+export const scorePlayedBoard=(...args)=>call('scorePlayedBoard',...args);

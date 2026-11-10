@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {initializeAI,evaluate,nativePosition,raceFeatures,chooseTurn,rankTurns,activation} from '../src/ai.js';
+import {initializeAI,evaluate,nativePosition,raceFeatures,chooseTurn,rankTurns,scorePlayedBoard,activation} from '../src/ai.js';
 import {contactFeatures} from '../src/ai-features.js';
 import {initialBoard,legalTurns} from '../src/rules.js';
 const read=p=>readFileSync(new URL('../'+p,import.meta.url),'utf8');
@@ -34,4 +34,19 @@ test('ranked moves are legal distinct boards in descending equity order',()=>{
   const key=b=>JSON.stringify(b),legal=new Set(legalTurns(board,1,[3,1]).map(t=>key(t.board)));
   assert.equal(new Set(r.map(t=>key(t.board))).size,r.length);
   r.forEach((t,i)=>{assert.ok(legal.has(key(t.board)));if(i)assert.ok(r[i-1].score>=t.score);});
+});
+
+test('played-board scoring matches ranked moves at their actual evaluation depth',()=>{
+  const board=initialBoard();
+  for(const level of [4,6]){
+    const context={level,target:7,scores:[2,3],cube:2};
+    const ranked=rankTurns(board,1,[6,4],{...context,limit:999});
+    const best=ranked[0];
+    const evaluated=scorePlayedBoard(best.board,1,{...context,level:best.evaluationLevel});
+    assert.ok(Math.abs(evaluated.score-best.score)<1e-12);
+    const omitted=legalTurns(board,1,[6,4]).find(t=>!ranked.some(r=>JSON.stringify(r.board)===JSON.stringify(t.board)));
+    assert.ok(omitted,'fixture must contain an excluded move');
+    const result=scorePlayedBoard(omitted.board,1,{...context,level:best.evaluationLevel});
+    assert.ok(Number.isFinite(result.score));
+  }
 });

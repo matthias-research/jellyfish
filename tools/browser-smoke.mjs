@@ -38,6 +38,7 @@ async function idle(){for(let i=0;i<200;i++){const s=await evaluate('jellyfish.g
 state=await idle();if(!state.dice.length)await evaluate('jellyfish.actions.roll()');
 assert.equal(await playTurn(),false);await evaluate('jellyfish.actions.finish()');await new Promise(r=>setTimeout(r,500));state=await idle();assert.equal(state.player,1);assert.equal(state.dice.length,0);
 await evaluate('jellyfish.actions.double()');await new Promise(r=>setTimeout(r,400));assert.equal((await evaluate('jellyfish.getState()')).match.pendingDouble,null);
+assert.ok(['JellyFish accepts','JellyFish declines'].includes(await evaluate('document.querySelector("#dialog-title").textContent')));assert.equal(await evaluate('document.querySelector("#dialog").open'),true);assert.equal(await evaluate('document.querySelector("#dialog-buttons button").textContent'),'OK');await evaluate('document.querySelector("#dialog-buttons button").click()');
 await evaluate('jellyfish.actions.evaluate()');
 for(let i=0;i<50;i++){if(await evaluate('document.querySelector("#dialog").open'))break;await new Promise(r=>setTimeout(r,100));}
 assert.equal(await evaluate('document.querySelector("#dialog-title").textContent'),'Position evaluation');

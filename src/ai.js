@@ -207,6 +207,13 @@ export function evaluateLookahead(board,player=1,{level=6,weights=[-1,-1,-1,1,1,
 export function chooseTurn(board,player,dice,options={}) {
   return rankTurns(board,player,dice,{...options,limit:1})[0]??null;
 }
+// Evaluate a played successor using the same perspective and cube/match weights as ranking.
+export function scorePlayedBoard(board,player,{level=5,target=0,scores=[0,0],cube=1}={}){
+  const side=player===1?0:1;
+  const weights=nativeEquityWeights(target?target-scores[1-side]:0,target?target-scores[side]:0,cube).reverse().map(x=>-x);
+  const evaluation=invert(level>=6?evaluateLookahead(board,-player,{level,weights:weights.slice().reverse().map(x=>-x)}):evaluate(board,-player));
+  return {score:evaluation.probabilities.slice(0,6).reduce((sum,n,i)=>sum+n*weights[i],0),evaluation};
+}
 export function rankTurns(board,player,dice,{level=5,limit=10,target=0,scores=[0,0],cube=1,randInt,searchBudget=10}={}) {
   const side=player===1?0:1,weights=nativeEquityWeights(target?target-scores[1-side]:0,target?target-scores[side]:0,cube).reverse().map(x=>-x);
   const opponentWeights=weights.slice().reverse().map(x=>-x);
@@ -236,17 +243,17 @@ export function rankTurns(board,player,dice,{level=5,limit=10,target=0,scores=[0
     const deep=[],shallow=[];
     for(let i=0;i<Math.max(deepCount,shallowCount);i++){
       const turn=turns[i],next=evaluateLookahead(turn.board,-player,{level:i<deepCount?7:6,weights:opponentWeights}),v=invert(next);
-      if(i<deepCount)deep.push({...turn,score:score(v),evaluation:v});
-      if(i<shallowCount){const sv=invert(next.shallow??next);shallow.push({...turn,index:i,score:score(sv),evaluation:sv});}
+      if(i<deepCount)deep.push({...turn,score:score(v),evaluation:v,evaluationLevel:7});
+      if(i<shallowCount){const sv=invert(next.shallow??next);shallow.push({...turn,index:i,score:score(sv),evaluation:sv,evaluationLevel:6});}
     }
     shallow.sort((a,b)=>b.score-a.score);
-    if(!deepCount)return (shallow.length?shallow:turns.map(t=>({...t,score:t.direct,evaluation:invert(evaluate(t.board,-player))}))).slice(0,limit);
-    if(shallow[0]?.index>=deepCount){const turn=shallow[0],v=invert(evaluateLookahead(turn.board,-player,{level:7,weights:opponentWeights}));deep.push({...turn,score:score(v),evaluation:v});}
+    if(!deepCount)return (shallow.length?shallow:turns.map(t=>({...t,score:t.direct,evaluation:invert(evaluate(t.board,-player)),evaluationLevel:5}))).slice(0,limit);
+    if(shallow[0]?.index>=deepCount){const turn=shallow[0],v=invert(evaluateLookahead(turn.board,-player,{level:7,weights:opponentWeights}));deep.push({...turn,score:score(v),evaluation:v,evaluationLevel:7});}
     return deep.sort((a,b)=>b.score-a.score).slice(0,limit);
   }
   return turns.map(turn=>{
     const v=invert(level<4?result(cheapProbabilities(models.cheap,nativePosition(turn.board,-player),{level,randInt}),'jf300 small network'):level>=6?evaluateLookahead(turn.board,-player,{level,weights:opponentWeights}):evaluate(turn.board,-player));
-    return {...turn,score:score(v),evaluation:v};
+    return {...turn,score:score(v),evaluation:v,evaluationLevel:level===4?5:level};
   }).sort((a,b)=>b.score-a.score).slice(0,limit);
 }
 export function cubeAdvice(board,player=1,{cube=1,target=0,scores=[0,0],crawford=false,level=5,jacoby=false}={}) {
