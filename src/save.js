@@ -1,3 +1,4 @@
+import {themeName} from './themes.js';
 import {MOTION_DEFAULTS} from './animation.js';
 import {validateBoard,cloneBoard,legalTurns,applyMove,winner,winMultiplier,initialBoard} from './rules.js';
 const fail=message=>{throw new Error(message);};
@@ -48,5 +49,5 @@ export function validateSave(d) {
   } else if(!result&&d.prefix.length)fail('Moves require dice.');
   if(d.opening&&(!sameBoard(d.board,initialBoard())||m.cube!==1||d.dice.length))fail('Invalid opening position.');
   if(!result&&!d.dice.length&&winner(d.board))fail('Winning board requires a completed game.');
-  return {format:'jellyfish-web',version:1,board:cloneBoard(d.board),match:{target:m.target,scores:[...m.scores],game:m.game,cube:m.cube,cubeOwner:m.cubeOwner,crawford:m.crawford,crawfordUsed:m.crawfordUsed,pendingDouble:null,result,matchWinner:m.matchWinner},player:d.player,dice:[...d.dice],prefix,turnStart,opening:d.opening,history:[...d.history],settings:{opponent:s.opponent,target:Number(s.target),level:Number(s.level),flip:s.flip,confirm:s.confirm!==false,dicePauseMs:s.dicePauseMs??MOTION_DEFAULTS.dicePauseMs,animationMs:s.animationMs??MOTION_DEFAULTS.animationMs}};
+  return {format:'jellyfish-web',version:1,board:cloneBoard(d.board),match:{target:m.target,scores:[...m.scores],game:m.game,cube:m.cube,cubeOwner:m.cubeOwner,crawford:m.crawford,crawfordUsed:m.crawfordUsed,pendingDouble:null,result,matchWinner:m.matchWinner},player:d.player,dice:[...d.dice],prefix,turnStart,opening:d.opening,history:[...d.history],settings:{theme:themeName(s.theme),opponent:s.opponent,target:Number(s.target),level:Number(s.level),flip:s.flip,confirm:s.confirm!==false,dicePauseMs:s.dicePauseMs??MOTION_DEFAULTS.dicePauseMs,animationMs:s.animationMs??MOTION_DEFAULTS.animationMs}};
 }

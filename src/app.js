@@ -1,3 +1,4 @@
+import {THEMES,themeName,applyTheme} from './themes.js';
 import {checkerDestinations} from './move-options.js';
 import {MOTION_DEFAULTS,motionSettings,checkerPosition,animateChecker} from './animation.js';
 import {recordedStatistics} from './statistics.js';
@@ -5,12 +6,16 @@ import {validateSave} from './save.js';
 import * as R from './rules.js';
 
 const $=s=>document.querySelector(s), NS='http://www.w3.org/2000/svg';
-let settings={...MOTION_DEFAULTS,opponent:'computer',target:7,level:5,flip:false,confirm:true}, board,match,player=1,dice=[],turns=[],prefix=[],turnStart,selected=null,opening=true,busy=false,ai=null,epoch=0,history=[],hintText='',timeline=[],timelineAt=0;
+let settings={...MOTION_DEFAULTS,opponent:'computer',target:7,level:5,flip:false,confirm:true,theme:'walnut'}, board,match,player=1,dice=[],turns=[],prefix=[],turnStart,selected=null,opening=true,busy=false,ai=null,epoch=0,history=[],hintText='',timeline=[],timelineAt=0;
 try{Object.assign(settings,JSON.parse(localStorage.getItem('jellyfish-settings')||'{}'));}catch{}
 Object.assign(settings,motionSettings(settings));
 let animationState=null,turnPhase='idle';
 let evaluatorReady=false,evaluationKey='',evaluationTimer;
+let hintOverlay=null,hintTimer,hintCycle=null,currentEvaluation=null;
+const hintPositionKey=()=>JSON.stringify([epoch,board,player,dice,prefix,match,settings.level]);
+function clearHintArrows(){clearTimeout(hintTimer);if(hintOverlay)hintText='';hintOverlay=null;$('#hint-arrows')?.remove();if(currentEvaluation)paintEvaluation(currentEvaluation.probability,currentEvaluation.status);}
 function cancelMotion(){animationState=null;turnPhase='idle';}
+const checkerColor=p=>themeName(settings.theme)==='heritage'?(p===1?'Silver':'Red'):(p===1?'White':'Black');
 const name=p=>p===1?'You':settings.opponent==='computer'?'JellyFish':'Player 2';
 const rand=()=>{const a=new Uint32Array(1);do{crypto.getRandomValues(a);}while(a[0]>=4294967292);return a[0]%6+1;};
 function message(s){$('#status').textContent=s;}
@@ -88,44 +93,126 @@ async function computer(){
 }
 
 function svg(tag,attrs={},text){const e=document.createElementNS(NS,tag);for(const[k,v]of Object.entries(attrs))e.setAttribute(k,v);if(text!==undefined)e.textContent=text;return e;}
-function checker(g,x,y,p,n,label){g.append(svg('circle',{cx:x,cy:y,r:24,fill:p===1?'#fff':'#111',stroke:'#111','stroke-width':2}));g.append(svg('circle',{cx:x,cy:y,r:19,fill:'none',stroke:p===1?'#aaa':'#555','stroke-width':1}));if(n)g.append(svg('text',{x,y:y+6,'text-anchor':'middle',fill:p===1?'black':'white','font-size':18},n));}
+function boardMaterials(s){
+  const heritage=themeName(settings.theme)==='heritage';
+  const defs=svg('defs');
+  for(const [id,color] of [['white','var(--white)'],['black','var(--black)']]){
+    const gradient=svg('radialGradient',{id:'checker-'+id,cx:'35%',cy:'25%',r:'80%'});
+    gradient.append(svg('stop',{offset:'0%', 'stop-color':id==='white'?(heritage?'#ffffff':'#fffef8'):(heritage?'#ff3838':'#59545d')}),svg('stop',{offset:'80%','stop-color':color}),svg('stop',{offset:'100%','stop-color':id==='white'?(heritage?'#747974':'#c8bfa7'):(heritage?'#600000':'#15131a')}));defs.append(gradient);
+  }
+  for(const [id,colors] of [['mahogany',['#311100','#95501f','#4c1b05']],['recess',['#170b04','#612709','#321004']],['ivory-die',['#fff','#d8dad6','#a2a59f']],['ruby-die',['#ff3434','#d00000','#800000']],['brass',['#d3b46d','#8c6c2c','#e0be72']],['light-die',['#fff','var(--white)','#b9b2a0']],['dark-die',['#615c68','var(--black)','#131117']]]){
+    const gradient=svg('linearGradient',{id,x1:'0%',y1:'0%',x2:'100%',y2:'100%'});
+    colors.forEach((color,i)=>gradient.append(svg('stop',{offset:(i*50)+'%','stop-color':color})));defs.append(gradient);
+  }
+  const grain=svg('pattern',{id:'wood-grain',width:180,height:680,patternUnits:'userSpaceOnUse'});
+  for(let i=0;i<30;i++){
+    const x=i*6;
+    grain.append(svg('path',{d:`M${x} 0 C${x+18} 150 ${x-20} 230 ${x+4} 340 S${x-14} 540 ${x} 680`,fill:'none',stroke:'var(--grain)','stroke-width':i%3===0?1.8:.7,opacity:i%3===0?.10:.07}));
+  }
+  defs.append(grain);s.append(defs);
+}
+function heritageFrame(s){
+  const g=svg('g',{'pointer-events':'none'});
+  // Beveled edges surround each playing field; a green seam separates the halves.
+  for(const [left,right] of [[24,444],[500,920]]){
+    g.append(svg('path',{d:`M${left-13} 17 H${right+13} L${right} 30 H${left} V650 L${left-13} 663 Z`,fill:'#b57539'}));
+    g.append(svg('path',{d:`M${right+13} 17 V663 H${left-13} L${left} 650 H${right} V30 Z`,fill:'#301302'}));
+    g.append(svg('rect',{x:left-4,y:26,width:right-left+8,height:628,fill:'none',stroke:'#512607','stroke-width':4}));
+  }
+  g.append(svg('rect',{x:468,y:0,width:8,height:680,fill:'#154411'}));
+  for(const y of [158,480]){
+    g.append(svg('rect',{x:454,y,width:36,height:40,rx:3,fill:'url(#brass)',stroke:'#65491d'}));
+    g.append(svg('path',{d:`M470 ${y+2} V${y+38} M475 ${y+2} V${y+38}`,stroke:'#5c461e',fill:'none'}));
+    for(const x of [460,484])for(const dy of [7,33])g.append(svg('circle',{cx:x,cy:y+dy,r:2,fill:'#5a451e',stroke:'#e3cb82','stroke-width':.7}));
+  }
+  s.append(g);
+}
+function checker(g,x,y,p,n,label){if(themeName(settings.theme)==='heritage'){g.append(svg('ellipse',{cx:x+1,cy:y+3,rx:25,ry:24,fill:'#0007'}));g.append(svg('circle',{cx:x,cy:y,r:25,fill:'url(#checker-'+(p===1?'white':'black')+')',stroke:'#20130c','stroke-width':2}));g.append(svg('circle',{cx:x,cy:y,r:22,fill:'none',stroke:p===1?'#edf0eb':'#ff8f80','stroke-width':1.5}));}g.append(svg('circle',{cx:x,cy:y,r:24,fill:p===1?'url(#checker-white)':'url(#checker-black)',stroke:'var(--edge)','stroke-width':2}));g.append(svg('circle',{cx:x,cy:y,r:19,fill:'none',stroke:themeName(settings.theme)==='heritage'?(p===1?'#818780':'#700000'):(p===1?'#b5a98b':'#77717b'),'stroke-width':1}));if(themeName(settings.theme)==='heritage')g.append(svg('circle',{cx:x,cy:y,r:22,fill:'none',stroke:p===1?'#f5f7f3':'#ff9d90','stroke-width':1.2}));if(n)g.append(svg('text',{x,y:y+6,'text-anchor':'middle',fill:p===1?'black':'white','font-size':18},n));}
 function drawDice(s,flip){
   if(!dice.length)return;
   // Keep the original pair visible until pickup, including on doubles.
   const center=(player===1)!==flip?710:234;
-  const g=svg('g',{id:'dice',role:'img','aria-label':`${player===1?'White':'Black'} dice: ${dice.join(' and ')}`});
+  const g=svg('g',{id:'dice',role:'img','aria-label':`${checkerColor(player)} dice: ${dice.join(' and ')}`});
   const patterns={1:[[0,0]],2:[[-1,-1],[1,1]],3:[[-1,-1],[0,0],[1,1]],4:[[-1,-1],[1,-1],[-1,1],[1,1]],5:[[-1,-1],[1,-1],[0,0],[-1,1],[1,1]],6:[[-1,-1],[1,-1],[-1,0],[1,0],[-1,1],[1,1]]};
   dice.forEach((value,i)=>{
-    const x=center+(i===0?-34:34),die=svg('g',{'data-die':value});
-    die.append(svg('rect',{x:x-23,y:318,width:48,height:48,rx:6,fill:'#555',stroke:'#bbb'}));
-    die.append(svg('rect',{x:x-25,y:315,width:48,height:48,rx:6,fill:player===1?'#fff':'#111',stroke:player===1?'#555':'#ccc','stroke-width':1.5}));
-    for(const [dx,dy] of patterns[value])die.append(svg('path',{d:`M${x-1+dx*13} ${339+dy*13-4} l4 4 -4 4 -4 -4 Z`,fill:player===1?'#111':'#fff'}));
+    const x=center+(i===0?-42:42),die=svg('g',{'data-die':value});
+    const heritage=themeName(settings.theme)==='heritage';
+    const color=heritage?(player===1?'ivory':'ruby'):(player===1?'light':'dark');
+    const edge=player===1?'#b6b2a6':heritage?'#700000':'#17131d';
+    const highlight=player===1?'#fff':heritage?'#ff7777':'#aaa1b6';
+    die.append(svg('rect',{x:x-26,y:314,width:55,height:55,rx:7,fill:'#0005'}));
+    die.append(svg('rect',{x:x-28,y:311,width:54,height:54,rx:7,fill:`url(#${color}-die)`,stroke:edge,'stroke-width':2}));
+    die.append(svg('path',{d:`M${x-25} 358 V319 Q${x-25} 314 ${x-20} 314 H${x+20}`,stroke:highlight,'stroke-width':2.5,opacity:.8,fill:'none','stroke-linecap':'round'}));
+    die.append(svg('path',{d:`M${x-21} 362 H${x+19} Q${x+23} 362 ${x+23} 357 V318`,stroke:edge,'stroke-width':2,opacity:.6,fill:'none'}));
+    for(const [dx,dy] of patterns[value]){
+      die.append(svg('circle',{cx:x-1+dx*13,cy:338+dy*13,r:5,fill:player===1?'#171619':'#fff7e9',stroke:player===1?'#8c877c':'#19151f','stroke-width':.6}));
+      die.append(svg('circle',{cx:x-2+dx*13,cy:336+dy*13,r:1.3,fill:player===1?'#77716b':'#fff'}));
+    }
     g.append(die);
   });
   s.append(g);
 }
-function draw(){const b=animationState?.board??board,flip=animationState?.flip??settings.flip;const focused=document.activeElement?.getAttribute('data-location');const s=$('#board');s.dataset.animation=animationState?'moving':'idle';s.dataset.phase=turnPhase;s.replaceChildren();s.append(svg('rect',{width:1000,height:680,fill:'#964b00'}));s.append(svg('rect',{x:24,y:30,width:420,height:620,fill:'var(--felt)',stroke:'#111','stroke-width':3}));s.append(svg('rect',{x:500,y:30,width:420,height:620,fill:'var(--felt)',stroke:'#111','stroke-width':3}));const targets=new Set(selected===null?[]:destinations(selected).keys());
-for(let visual=0;visual<24;visual++){const top=visual>=12;const col=top?visual-12:11-visual;const p=flip?23-visual:visual;const x=59+col*70+(col>=6?56:0),y=top?31:649;const g=svg('g',{class:'point',tabindex:0,role:'button','data-location':p,'aria-pressed':selected===p,'aria-label':`Point ${p+1}: ${b.points[p]===0?'empty':Math.abs(b.points[p])+' '+(b.points[p]>0?'white':'black')+' checkers'}`});g.append(svg('rect',{x:x-34,y:top?30:360,width:68,height:290,fill:'transparent'}));g.append(svg('path',{d:`M${x-34} ${y} L${x+34} ${y} L${x} ${top?286:394} Z`,fill:col%2?'var(--light)':'var(--dark)',stroke:'#111','stroke-width':1}));if(selected===p)g.append(svg('rect',{x:x-31,y:top?35:365,width:62,height:280,fill:'none',class:'selected'}));if(targets.has(p))g.append(svg('circle',{cx:x,cy:top?310:370,r:12,class:'target'}));let count=Math.abs(b.points[p]);for(let j=0;j<Math.min(5,count);j++)checker(g,x,top?60+j*49:620-j*49,Math.sign(b.points[p]),j===4&&count>5?count:0);g.append(svg('text',{x,y:top?20:674,'text-anchor':'middle','font-size':18,fill:'#fff'},p+1));g.onclick=()=>point(p);g.ondblclick=e=>{e.preventDefault();if(!e.detail||selected===p)quickPoint(p);};g.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();point(p);}};s.append(g);}
-for(const p of [1,-1]){const i=p===1?0:1,y=p===1?430:200,g=svg('g',{class:'point',tabindex:0,role:'button','data-location':-1,'aria-pressed':selected===-1&&p===player,'aria-label':`${p===1?'White':'Black'} bar: ${b.bar[i]}`});g.append(svg('rect',{x:446,y:y-70,width:52,height:140,fill:'transparent'}));for(let j=0;j<Math.min(b.bar[i],3);j++)checker(g,472,y+j*28,p,j===2&&b.bar[i]>3?b.bar[i]:0);if(selected===-1&&p===player)g.append(svg('rect',{x:446,y:y-28,width:52,height:120,fill:'none',class:'selected'}));g.onclick=()=>point(-1);g.onkeydown=e=>{if(e.key==='Enter')point(-1);};s.append(g);}
-const off=svg('g',{class:'point',tabindex:0,role:'button','data-location':24,'aria-label':'Bear off'});off.append(svg('rect',{x:937,y:30,width:50,height:620,fill:'#663300',stroke:targets.has(24)?'#00ffff':'#111','stroke-width':targets.has(24)?5:2}));for(let i=0;i<b.off[0];i++)off.append(svg('rect',{x:943,y:635-i*13,width:38,height:10,fill:'white',stroke:'black'}));for(let i=0;i<b.off[1];i++)off.append(svg('rect',{x:943,y:36+i*13,width:38,height:10,fill:'#111',stroke:'#aaa'}));off.onclick=()=>point(24);off.onkeydown=e=>{if(e.key==='Enter')point(24);};s.append(off);const cubeY=match.cubeOwner===1?565:match.cubeOwner===-1?65:315;s.append(svg('rect',{x:449,y:cubeY,width:46,height:46,rx:3,fill:'white',stroke:'black','stroke-width':2}));s.append(svg('text',{x:472,y:cubeY+31,'text-anchor':'middle','font-size':24,'font-weight':'bold'},match.cube===1?'64':match.cube));drawDice(s,flip);if(animationState){animationState.sprites.forEach((sprite,i)=>{const g=svg('g',{'data-moving-checker':i,'pointer-events':'none',transform:`translate(${sprite.pose.x} ${sprite.pose.y}) scale(1 ${sprite.pose.scaleY})`});checker(g,0,0,sprite.player,0);s.append(g);});}if(focused!==null&&focused!==undefined)[...s.querySelectorAll('[data-location]')].find(g=>g.dataset.location===focused)?.focus({preventScroll:true});}
+function drawHintArrows(s,flip){
+  if(!hintOverlay)return;
+  if(hintOverlay.key!==hintPositionKey()){clearHintArrows();return;}
+  const g=svg('g',{id:'hint-arrows','pointer-events':'none','aria-label':'Suggested checker moves'});
+  const defs=svg('defs'),marker=svg('marker',{id:'hint-arrowhead',viewBox:'0 0 12 12',refX:10,refY:6,markerWidth:4,markerHeight:4,orient:'auto'});
+  marker.append(svg('path',{d:'M0 0 L12 6 L0 12 Z',fill:'#5eeaff',stroke:'#123946','stroke-width':.7}));defs.append(marker);g.append(defs);
+  let position=R.cloneBoard(board);
+  const count=(b,location)=>location===-1?b.bar[R.playerIndex(player)]:location===24?b.off[R.playerIndex(player)]:Math.abs(b.points[location]);
+  hintOverlay.moves.forEach((move,i)=>{
+    const from=checkerPosition(move.from,player,count(position,move.from),flip);
+    position=R.applyMove(position,player,move);
+    const to=checkerPosition(move.to,player,count(position,move.to),flip);
+    const dx=to.x-from.x,dy=to.y-from.y,length=Math.hypot(dx,dy)||1;
+    const x=to.x-dx/length*17,y=to.y-dy/length*17;
+    const d=`M${from.x} ${from.y} L${x} ${y}`;
+    g.append(svg('path',{d,fill:'none',stroke:'#123946','stroke-width':11,'stroke-linecap':'round'}));
+    g.append(svg('path',{d,fill:'none',stroke:'#5eeaff','stroke-width':6,'stroke-linecap':'round','marker-end':'url(#hint-arrowhead)','data-hint-step':i+1}));
+    const labelX=from.x+dx*.45,labelY=from.y+dy*.45;
+    g.append(svg('circle',{cx:labelX,cy:labelY,r:12,fill:'#123946',stroke:'#5eeaff','stroke-width':2}));
+    g.append(svg('text',{x:labelX,y:labelY+5,fill:'white','text-anchor':'middle','font-size':14,'font-weight':'bold'},i+1));
+  });
+  s.append(g);
+}
+function draw(){const b=animationState?.board??board,flip=animationState?.flip??settings.flip;const focused=document.activeElement?.getAttribute('data-location');const s=$('#board');s.dataset.animation=animationState?'moving':'idle';s.dataset.phase=turnPhase;s.replaceChildren();boardMaterials(s);s.append(svg('rect',{width:1000,height:680,rx:10,fill:themeName(settings.theme)==='heritage'?'url(#mahogany)':'var(--frame)'}));s.append(svg('rect',{x:24,y:30,width:420,height:620,fill:'var(--felt)',stroke:'var(--edge)','stroke-width':3}));s.append(svg('rect',{x:500,y:30,width:420,height:620,fill:'var(--felt)',stroke:'var(--edge)','stroke-width':3}));if(themeName(settings.theme)!=='classic')s.append(svg('rect',{x:0,y:0,width:1000,height:680,fill:'url(#wood-grain)','pointer-events':'none'}));if(themeName(settings.theme)==='heritage')heritageFrame(s);const targets=new Set(selected===null?[]:destinations(selected).keys());
+for(let visual=0;visual<24;visual++){const top=visual>=12;const col=top?visual-12:11-visual;const p=flip?23-visual:visual;const x=59+col*70+(col>=6?56:0),y=top?31:649;const g=svg('g',{class:'point',tabindex:0,role:'button','data-location':p,'aria-pressed':selected===p,'aria-label':`Point ${p+1}: ${b.points[p]===0?'empty':Math.abs(b.points[p])+' '+checkerColor(Math.sign(b.points[p])).toLowerCase()+' checkers'}`});g.append(svg('rect',{x:x-34,y:top?30:360,width:68,height:290,fill:'transparent'}));g.append(svg('path',{d:`M${x-34} ${y} L${x+34} ${y} L${x} ${top?286:394} Z`,fill:col%2?'var(--light)':'var(--dark)',stroke:'var(--edge)','stroke-width':1}));if(selected===p)g.append(svg('rect',{x:x-31,y:top?35:365,width:62,height:280,fill:'none',class:'selected'}));if(targets.has(p))g.append(svg('circle',{cx:x,cy:top?310:370,r:12,class:'target'}));let count=Math.abs(b.points[p]);for(let j=0;j<Math.min(5,count);j++)checker(g,x,top?60+j*49:620-j*49,Math.sign(b.points[p]),j===4&&count>5?count:0);g.append(svg('text',{x,y:top?20:674,'text-anchor':'middle','font-size':18,fill:'var(--ink)'},p+1));g.onclick=()=>point(p);g.ondblclick=e=>{e.preventDefault();if(!e.detail||selected===p)quickPoint(p);};g.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();point(p);}};s.append(g);}
+for(const p of [1,-1]){const i=p===1?0:1,y=p===1?430:200,g=svg('g',{class:'point',tabindex:0,role:'button','data-location':-1,'aria-pressed':selected===-1&&p===player,'aria-label':`${checkerColor(p)} bar: ${b.bar[i]}`});g.append(svg('rect',{x:446,y:y-70,width:52,height:140,fill:'transparent'}));for(let j=0;j<Math.min(b.bar[i],3);j++)checker(g,472,y+j*28,p,j===2&&b.bar[i]>3?b.bar[i]:0);if(selected===-1&&p===player)g.append(svg('rect',{x:446,y:y-28,width:52,height:120,fill:'none',class:'selected'}));g.onclick=()=>point(-1);g.onkeydown=e=>{if(e.key==='Enter')point(-1);};s.append(g);}
+const off=svg('g',{class:'point',tabindex:0,role:'button','data-location':24,'aria-label':'Bear off'});if(themeName(settings.theme)==='heritage'){
+  for(const y of [30,400]){
+    off.append(svg('rect',{x:935,y,width:56,height:250,rx:5,fill:'url(#recess)',stroke:targets.has(24)?'#a7ef20':'#a05c32','stroke-width':targets.has(24)?4:3}));
+  }
+}else off.append(svg('rect',{x:937,y:30,width:50,height:620,fill:'var(--tray)',stroke:targets.has(24)?'#00ffff':'var(--edge)','stroke-width':targets.has(24)?5:2}));for(let i=0;i<b.off[0];i++)off.append(svg('rect',{x:943,y:635-i*13,width:38,height:10,fill:'var(--white)',stroke:'var(--edge)'}));for(let i=0;i<b.off[1];i++)off.append(svg('rect',{x:943,y:36+i*13,width:38,height:10,fill:'var(--black)',stroke:'#aaa'}));off.onclick=()=>point(24);off.onkeydown=e=>{if(e.key==='Enter')point(24);};s.append(off);if(themeName(settings.theme)==='heritage'){
+  const cube=svg('g',{'aria-label':`Doubling cube ${match.cube}, ${match.cubeOwner===null?'centered':match.cubeOwner===1?'Silver owns':'Red owns'}`});
+  cube.append(svg('rect',{x:934,y:311,width:58,height:58,rx:8,fill:'#370900',opacity:.6}));
+  cube.append(svg('rect',{x:931,y:307,width:58,height:58,rx:8,fill:'url(#ruby-die)',stroke:'#7b0600','stroke-width':2}));
+  cube.append(svg('text',{x:960,y:347,fill:'#fff','text-anchor':'middle','font-size':32,'font-weight':'bold'},match.cube===1?'64':match.cube));
+  if(match.cubeOwner!==null)cube.append(svg('path',{d:match.cubeOwner===1?'M951 375 L969 375 L960 385 Z':'M951 297 L969 297 L960 287 Z',fill:match.cubeOwner===1?'var(--white)':'var(--black)',stroke:'#f1c991'}));
+  s.append(cube);
+}else{const cubeY=match.cubeOwner===1?565:match.cubeOwner===-1?65:315;s.append(svg('rect',{x:449,y:cubeY,width:46,height:46,rx:5,fill:'var(--white)',stroke:'var(--edge)','stroke-width':2}));s.append(svg('text',{x:472,y:cubeY+31,'text-anchor':'middle','font-size':24,'font-weight':'bold'},match.cube===1?'64':match.cube));}drawDice(s,flip);if(animationState){animationState.sprites.forEach((sprite,i)=>{const g=svg('g',{'data-moving-checker':i,'pointer-events':'none',transform:`translate(${sprite.pose.x} ${sprite.pose.y}) scale(1 ${sprite.pose.scaleY})`});checker(g,0,0,sprite.player,0);s.append(g);});}drawHintArrows(s,flip);if(focused!==null&&focused!==undefined)[...s.querySelectorAll('[data-location]')].find(g=>g.dataset.location===focused)?.focus({preventScroll:true});}
 function showEvaluation(probability,status){
+  currentEvaluation={probability,status};
+  if(!hintOverlay)paintEvaluation(probability,status);
+}
+function paintEvaluation(probability,status){
   const meter=$('#evaluation-bar'),known=Number.isFinite(probability);
   const percent=known?Math.max(0,Math.min(100,probability*100)):50;
   $('#evaluation-white').style.width=percent+'%';
-  $('#eval-white').textContent='White '+(known?percent.toFixed(1)+'%':'—');
-  $('#eval-black').textContent='Black '+(known?(100-percent).toFixed(1)+'%':'—');
+  $('#eval-white').textContent=checkerColor(1)+' '+(known?percent.toFixed(1)+'%':'—');
+  $('#eval-black').textContent=checkerColor(-1)+' '+(known?(100-percent).toFixed(1)+'%':'—');
   $('#eval-status').textContent=status;
+  meter.setAttribute('aria-label',checkerColor(1)+' estimated game win probability');
   meter.setAttribute('aria-busy','false');
   meter.classList.toggle('unknown',!known);
   if(known)meter.setAttribute('aria-valuenow',percent.toFixed(1));else meter.removeAttribute('aria-valuenow');
-  meter.setAttribute('aria-valuetext',known?`White ${percent.toFixed(1)}%, Black ${(100-percent).toFixed(1)}%`:status);
+  meter.setAttribute('aria-valuetext',known?`${checkerColor(1)} ${percent.toFixed(1)}%, ${checkerColor(-1)} ${(100-percent).toFixed(1)}%`:status);
 }
 function updateEvaluation(){
   const turnDone=dice.length&&complete()&&!animationState;
   // Evaluate only whole turns; undo/load during a turn uses its starting position.
   const evaluatedBoard=dice.length&&!turnDone?turnStart:board;
   const onRoll=turnDone?-player:player;
-  const key=JSON.stringify([epoch,evaluatedBoard,onRoll,opening,match.result,evaluatorReady]);
+  const key=JSON.stringify([epoch,evaluatedBoard,onRoll,opening,match.result,evaluatorReady,settings.theme]);
   if(key===evaluationKey)return;
   evaluationKey=key;clearTimeout(evaluationTimer);
   const winner=match.result?.winner??R.winner(evaluatedBoard);
@@ -134,7 +221,7 @@ function updateEvaluation(){
   if(!evaluatorReady){showEvaluation(null,'Evaluation unavailable');return;}
   const position=R.cloneBoard(evaluatedBoard);
   // Preserve the last value while waiting, so the bar transitions directly to the result.
-  $('#eval-status').textContent='Evaluating…';$('#evaluation-bar').setAttribute('aria-busy','true');
+  if(!hintOverlay){$('#eval-status').textContent='Evaluating…';$('#evaluation-bar').setAttribute('aria-busy','true');}
   evaluationTimer=setTimeout(async()=>{
     try{
       const value=await ai.evaluate(position,onRoll);
@@ -143,11 +230,40 @@ function updateEvaluation(){
     }catch(error){if(key===evaluationKey)showEvaluation(null,'Evaluation unavailable');}
   },80);
 }
-function render(){draw();updateEvaluation();$('#human-score').textContent=match.scores[0];$('#computer-score').textContent=match.scores[1];$('#computer-name').textContent=name(-1);$('#human-pips').textContent='Pips: '+R.pipCount(board,1);$('#computer-pips').textContent='Pips: '+R.pipCount(board,-1);$('#match-info').textContent=(match.target?match.target+' point match':'Money game')+' · Game '+match.game+(match.crawford?' · Crawford':'');let prompt=opening?'Roll dice to decide who starts.':busy?(turnPhase==='pause'?'JellyFish rolled '+dice.join('–')+' — pausing before moving…':turnPhase==='moving'?'Moving checker…':name(player)+' is thinking…'):match.result?(match.matchWinner?name(match.matchWinner)+' wins the match.':name(match.result.winner)+' wins the game.') :!dice.length?name(player)+': roll dice or offer a double.':complete()?'Pick up the dice to finish your turn.':name(player)+': select a checker or a highlighted destination.';if(hintText)prompt=hintText;$('#instruction').textContent=prompt;$('#roll').disabled=busy||!!dice.length||!!match.result||!!match.pendingDouble;$('#undo').disabled=busy||isComputer()||!prefix.length;$('#finish').disabled=busy||isComputer()||!complete();$('#double').disabled=busy||opening||!!dice.length||!!match.result||match.crawford||!!match.pendingDouble||(match.cubeOwner!==null&&match.cubeOwner!==player);$('#hint').disabled=busy||isComputer()||!dice.length||!ai;$('#next-game').hidden=!match.result;$('#next-game').textContent=match.matchWinner?'New match':'Next game';}
+function render(){applyTheme(settings.theme);draw();updateEvaluation();$('#human-score').textContent=match.scores[0];$('#computer-score').textContent=match.scores[1];$('#computer-name').textContent=name(-1);$('#human-pips').textContent='Pips: '+R.pipCount(board,1);$('#computer-pips').textContent='Pips: '+R.pipCount(board,-1);$('#match-info').textContent=(match.target?match.target+' point match':'Money game')+' · Game '+match.game+(match.crawford?' · Crawford':'');let prompt=opening?'Roll dice to decide who starts.':busy?(turnPhase==='pause'?'JellyFish rolled '+dice.join('–')+' — pausing before moving…':turnPhase==='moving'?'Moving checker…':name(player)+' is thinking…'):match.result?(match.matchWinner?name(match.matchWinner)+' wins the match.':name(match.result.winner)+' wins the game.') :!dice.length?name(player)+': roll dice or offer a double.':complete()?'Pick up the dice to finish your turn.':name(player)+': select a checker or a highlighted destination.';if(hintText)prompt=hintText;$('#instruction').textContent=prompt;$('#roll').disabled=busy||!!dice.length||!!match.result||!!match.pendingDouble;$('#undo').disabled=busy||isComputer()||!prefix.length;$('#finish').disabled=busy||isComputer()||!complete();$('#double').disabled=busy||opening||!!dice.length||!!match.result||match.crawford||!!match.pendingDouble||(match.cubeOwner!==null&&match.cubeOwner!==player);$('#hint').disabled=busy||isComputer()||!dice.length||!ai;$('#next-game').hidden=!match.result;$('#next-game').textContent=match.matchWinner?'New match':'Next game';}
 function newDialog(){modal('New game / match',`<label>Match length<select id="new-target">${[0,1,3,5,7,9,11,15,21].map(n=>`<option value="${n}" ${n==settings.target?'selected':''}>${n?n+' points':'Money game'}</option>`).join('')}</select></label><label>Opponent<select id="new-opponent"><option value="computer">JellyFish</option><option value="human" ${settings.opponent==='human'?'selected':''}>Another player</option></select></label>`,[['Cancel',()=>{}],['Start',()=>{settings.target=Number($('#new-target').value);settings.opponent=$('#new-opponent').value;saveSettings();reset();}]]);}
 function saveSettings(){try{localStorage.setItem('jellyfish-settings',JSON.stringify(settings));}catch{}}
-function settingsDialog(){modal('Settings',`<label>Playing level<select id="level">${[1,2,3,4,5,6,7].map(n=>`<option value="${n}" ${settings.level==n?'selected':''}>${n}${n<=2?' — Randomized':n===3?' — Fast':n===4?' — Selective':n===5?' — Full evaluation':n===6?' — Lookahead':' — Selective lookahead'}</option>`).join('')}</select></label><label>Pause after JellyFish rolls (seconds)<input id="dice-pause" type="number" min="0" max="5" step="0.1" value="${settings.dicePauseMs/1000}"></label><label>Checker animation duration (milliseconds)<input id="animation-speed" type="range" min="0" max="1500" step="50" value="${settings.animationMs}"></label><p>Animation: <output id="animation-value">${settings.animationMs===0?'Off':settings.animationMs+' ms per checker'}</output>. Shorter is faster; 0 turns animation off.</p><label>Reverse board<input id="flip" type="checkbox" ${settings.flip?'checked':''}></label><p>Levels 1 and 2 add random variation to their evaluations, as in the original. The browser does not reproduce the original random seed.</p><p>Dice use the browser's cryptographic random generator. Dice match the current player’s checker color.</p>`,[['Cancel',()=>{}],['OK',()=>{settings.dicePauseMs=Math.max(0,Math.min(5000,(Number($('#dice-pause').value)||0)*1000));settings.animationMs=Number($('#animation-speed').value);settings.level=Number($('#level').value);settings.flip=$('#flip').checked;saveSettings();render();}]]);$('#animation-speed').oninput=e=>{$('#animation-value').textContent=Number(e.target.value)===0?'Off':e.target.value+' ms per checker';};}
-async function hint(){if(!ai||!dice.length||busy||isComputer())return;busy=true;render();const token=epoch;try{const t=await ai.chooseTurn(turnStart,player,dice,engineContext());if(token!==epoch)return;hintText='Suggested turn: '+t.moves.map(m=>(m.from===-1?'bar':m.from+1)+'/'+(m.to===24?'off':m.to+1)).join(' ');if(!t.moves.length)hintText='No legal moves.';}catch(e){message(e.message);}finally{if(token===epoch){busy=false;render();}}}
+function settingsDialog(){modal('Settings',`<fieldset class="theme-picker"><legend>Board appearance</legend>${Object.entries(THEMES).map(([id,t])=>`<label class="theme-choice"><input type="radio" name="board-theme" value="${id}" ${themeName(settings.theme)===id?'checked':''}><span class="theme-swatch" style="--swatch-base:${t.colors.felt};--swatch-one:${t.colors.light};--swatch-two:${t.colors.dark}"></span><span><b>${t.name}</b><small>${t.description}</small></span></label>`).join('')}</fieldset><label>Playing level<select id="level">${[1,2,3,4,5,6,7].map(n=>`<option value="${n}" ${settings.level==n?'selected':''}>${n}${n<=2?' — Randomized':n===3?' — Fast':n===4?' — Selective':n===5?' — Full evaluation':n===6?' — Lookahead':' — Selective lookahead'}</option>`).join('')}</select></label><label>Pause after JellyFish rolls (seconds)<input id="dice-pause" type="number" min="0" max="5" step="0.1" value="${settings.dicePauseMs/1000}"></label><label>Checker animation duration (milliseconds)<input id="animation-speed" type="range" min="0" max="1500" step="50" value="${settings.animationMs}"></label><p>Animation: <output id="animation-value">${settings.animationMs===0?'Off':settings.animationMs+' ms per checker'}</output>. Shorter is faster; 0 turns animation off.</p><label>Reverse board<input id="flip" type="checkbox" ${settings.flip?'checked':''}></label><p>Levels 1 and 2 add random variation to their evaluations, as in the original. The browser does not reproduce the original random seed.</p><p>Dice use the browser's cryptographic random generator. Dice match the current player’s checker color.</p>`,[['Cancel',()=>{}],['OK',()=>{settings.dicePauseMs=Math.max(0,Math.min(5000,(Number($('#dice-pause').value)||0)*1000));settings.animationMs=Number($('#animation-speed').value);settings.theme=$('input[name="board-theme"]:checked').value;settings.level=Number($('#level').value);settings.flip=$('#flip').checked;saveSettings();render();}]]);$('#animation-speed').oninput=e=>{$('#animation-value').textContent=Number(e.target.value)===0?'Off':e.target.value+' ms per checker';};}
+async function hint(){
+  if(!ai||!dice.length||busy||isComputer())return;
+  clearTimeout(hintTimer);busy=true;render();const token=epoch,key=hintPositionKey();
+  try{
+    if(hintCycle?.key!==key){
+      let ranked;
+      if(prefix.length){
+        const candidates=[...new Map(available().map(t=>[JSON.stringify(t.board),t])).values()];
+        ranked=await Promise.all(candidates.map(async t=>{
+          const value=await ai.evaluate(t.board,-player);
+          return {moves:t.moves.slice(prefix.length),probability:player===1?value.lose:value.win,score:-value.equity};
+        }));
+        ranked.sort((a,b)=>b.score-a.score);
+      }else{
+        const turns=await ai.rankTurns(turnStart,player,dice,{...engineContext(),limit:Number.MAX_SAFE_INTEGER});
+        ranked=turns.map(t=>({moves:t.moves,probability:player===1?t.evaluation.win:t.evaluation.lose,score:t.score}));
+      }
+      if(token!==epoch||key!==hintPositionKey())return;
+      hintCycle={key,ranked:ranked.filter(t=>t.moves.length),index:-1};
+    }
+    if(!hintCycle.ranked.length){clearHintArrows();hintText=complete()?'No moves remaining. Pick up the dice.':'No legal moves.';return;}
+    hintCycle.index=(hintCycle.index+1)%hintCycle.ranked.length;
+    const option=hintCycle.ranked[hintCycle.index],number=hintCycle.index+1,total=hintCycle.ranked.length;
+    hintOverlay={key,moves:option.moves};
+    const ownChance=player===1?option.probability:1-option.probability;
+    hintText=`Suggested turn ${number} of ${total}: `+option.moves.map(m=>(m.from===-1?'bar':m.from+1)+'/'+(m.to===24?'off':m.to+1)).join(' ')+` · ${checkerColor(player)} win chance ${(100*ownChance).toFixed(1)}%`;
+    paintEvaluation(option.probability,`Hint ${number} of ${total} · estimated win chance`);
+    hintTimer=setTimeout(()=>{clearHintArrows();render();},3000);
+  }catch(e){clearHintArrows();message(e.message);}finally{if(token===epoch){busy=false;render();}}
+}
 function engineContext(){return {cube:match.cube,target:match.target,scores:[...match.scores],crawford:match.crawford,level:Number(settings.level),jacoby:false};}
 async function double(){if($('#double').disabled)return;try{match=R.offerDouble(match,player);const offerer=player;if(settings.opponent==='computer'&&offerer===1&&ai){const token=epoch;busy=true;render();const advice=await ai.cubeAdvice(board,-1,engineContext());if(token!==epoch)return;match=R.respondDouble(match,advice.take);busy=false;log('JellyFish '+(advice.take?'takes the cube at '+match.cube:'drops')+'.');render();return;}cubeDialog(offerer);}catch(e){busy=false;if(match.pendingDouble!==null)match={...match,pendingDouble:null};message(e.message);render();}}
 function cubeDialog(offerer){modal('Double offered',name(offerer)+' offers the cube at '+match.cube*2+'. Taking gives ownership to '+name(-offerer)+'.',[['Drop',()=>{match=R.respondDouble(match,false);log(name(-offerer)+' drops.');render();}],['Take',()=>{match=R.respondDouble(match,true);log(name(-offerer)+' takes the cube at '+match.cube+'.');render();if(isComputer())roll();}]]);render();}
@@ -165,10 +281,12 @@ function showStatistics(){const stats=recordedStatistics(history);const rows=[['
 function exportLog(){const text='JellyFish browser game log\n'+(match.target?match.target+' point match':'Money game')+'\nScore: '+match.scores.join(' : ')+'\n\n'+history.join('\n')+'\n';const url=URL.createObjectURL(new Blob([text],{type:'text/plain;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download='jellyfish-game-log.txt';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
 function rolloutDialog(){if(!ai||busy||match.pendingDouble)return;modal('Rollout',`<p>Simulate this position with direct neural evaluation for both players. The cube and match score are ignored. Existing dice are not used; each simulated turn rolls fresh dice.</p><label>Games<select id="rollout-games"><option selected>8</option><option>16</option><option>32</option></select></label><label>Random seed<input id="rollout-seed" type="number" min="1" max="4294967295" value="1"></label><p>This is a browser simulation, not a verified reproduction of the original rollout algorithm.</p>`,[['Cancel',()=>{}],['Start',()=>runRollout(Number($('#rollout-games').value),Number($('#rollout-seed').value))]]);}
 async function runRollout(games,seed){if(![8,16,32].includes(games)||!Number.isSafeInteger(seed)||seed<1||seed>4294967295){message('Choose a seed from 1 to 4294967295.');return;}const token=epoch;busy=true;hintText='Running '+games+' rollout games…';render();try{const r=await ai.rollout(board,player,{games,seed,maxTurns:1000});if(token!==epoch)return;const percent=n=>Number.isFinite(n)?(100*n).toFixed(2)+'%':'—';modal('Rollout results',`<p>Perspective: <b>${name(player)}</b> · Seed ${r.seed}</p><table><tr><td>Games requested</td><td>${r.games}</td></tr><tr><td>Wins / losses</td><td>${r.wins} / ${r.losses}</td></tr><tr><td>Unfinished</td><td>${r.unfinished}</td></tr><tr><td>Win rate</td><td>${percent(r.winRate)}</td></tr><tr><td>Cubeless equity</td><td>${Number.isFinite(r.equity)?r.equity.toFixed(4):'—'}</td></tr><tr><td>Win-rate standard error</td><td>${percent(r.standardError)}</td></tr></table><p>Direct neural evaluation for both players, fresh dice, no doubling. A small sample is uncertain; the standard error describes sampling variation only.</p>`);}catch(e){message('Rollout failed: '+e.message);}finally{if(token===epoch){busy=false;hintText='';render();}}}
-const actions={statistics:showStatistics,rollout:rolloutDialog,exportLog,back:()=>replay(-1),forward:()=>replay(1),swap:swapDice,evaluate:evaluatePosition,best:bestMoves,edit:editPosition,new:newDialog,roll,undo,finish,double,hint,settings:settingsDialog,save,load:()=>$('#file').click(),flip:()=>{settings.flip=!settings.flip;saveSettings();render();},print:()=>print(),next:()=>{if(busy||!match.result)return;if(match.matchWinner){reset();return;}epoch++;match=R.startGame(match);board=R.initialBoard();dice=[];prefix=[];turns=[];opening=true;selected=null;checkpoint();render();},resign:()=>{if(busy||opening||match.result||match.pendingDouble)return;modal('Resignation','Resignation is agreed between players. Select the number of points at stake.',[['Cancel',()=>{}],['Single game',()=>{match=R.resignGame(match,player,1);dice=[];log(name(player)+' resigns.');checkpoint();render();}]]);},help:()=>modal('How to play','<p>You play white, moving from point 24 toward point 1. Drag a checker to its destination, or click a checker and then a highlighted destination. A checker with only one legal destination moves immediately. Highlights include destinations reached using multiple dice on the same checker, including up to four moves on doubles. Each intermediate move must be legal. If routes share a destination, fewer dice are preferred, then the displayed dice order; use Swap dice or select intermediate points to choose another route. Double-click a checker to use the first available die.</p><p>Checkers on the bar enter first. You must use both dice if possible, or the higher die when only one can be used. Doubles allow four moves. Once all checkers are home, click the right-hand tray to bear off.</p><p>Use Undo before picking up the dice. Click the board when waiting to roll or pick up dice, or press Space. Ctrl+Z undoes. The cube may be offered before rolling, except during the Crawford game.</p>'),about:()=>modal('About JellyFish','<img class="logo" src="assets/bitmap-LOGOU-1044.png" alt="JellyFish"><p><b>JellyFish Light 3.5</b><br>Browser reconstruction</p><p>Original logo extracted from Build 268; dice redrawn in the original style. JavaScript rules and reconstructed evaluation engine.</p><p>This reconstruction is under verification. Cube decisions use the recovered money-game and match-equity policy, with the current cube, score, Crawford state, and playing level. Browser saves use JSON; legacy position and match files are not yet supported.</p>')};
+const actions={statistics:showStatistics,rollout:rolloutDialog,exportLog,back:()=>replay(-1),forward:()=>replay(1),swap:swapDice,evaluate:evaluatePosition,best:bestMoves,edit:editPosition,new:newDialog,roll,undo,finish,double,hint,settings:settingsDialog,save,load:()=>$('#file').click(),flip:()=>{settings.flip=!settings.flip;saveSettings();render();},print:()=>print(),next:()=>{if(busy||!match.result)return;if(match.matchWinner){reset();return;}epoch++;match=R.startGame(match);board=R.initialBoard();dice=[];prefix=[];turns=[];opening=true;selected=null;checkpoint();render();},resign:()=>{if(busy||opening||match.result||match.pendingDouble)return;modal('Resignation','Resignation is agreed between players. Select the number of points at stake.',[['Cancel',()=>{}],['Single game',()=>{match=R.resignGame(match,player,1);dice=[];log(name(player)+' resigns.');checkpoint();render();}]]);},help:()=>modal('How to play','<p>You play white, moving from point 24 toward point 1. Drag a checker to its destination, or click a checker and then a highlighted destination. A checker with only one legal destination moves immediately. Highlights include destinations reached using multiple dice on the same checker, including up to four moves on doubles. Each intermediate move must be legal. If routes share a destination, fewer dice are preferred, then the displayed dice order; use Swap dice or select intermediate points to choose another route. Double-click a checker to use the first available die.</p><p>Checkers on the bar enter first. You must use both dice if possible, or the higher die when only one can be used. Doubles allow four moves. Once all checkers are home, click the right-hand tray to bear off.</p><p>Click Hint repeatedly to cycle through ranked alternatives. Numbered arrows and the evaluation bar preview each suggestion for three seconds, then the bar returns to the current position. A new position restarts the cycle. Rankings consider game value, including gammons, so the best move need not have the highest simple win percentage.</p><p>Use Undo before picking up the dice. Click the board when waiting to roll or pick up dice, or press Space. Ctrl+Z undoes. The cube may be offered before rolling, except during the Crawford game.</p>'),about:()=>modal('About JellyFish','<img class="logo" src="assets/jellyfish-logo.png" alt="JellyFish"><p><b>JellyFish Light 3.5</b><br>Browser reconstruction</p><p>Upscaled JellyFish logo supplied for this browser edition; dice redrawn in the original style. JavaScript rules and reconstructed evaluation engine.</p><p>This reconstruction is under verification. Cube decisions use the recovered money-game and match-equity policy, with the current cube, score, Crawford state, and playing level. Browser saves use JSON; legacy position and match files are not yet supported.</p>')};
 $('#board').addEventListener('pointerdown',e=>{const g=e.target.closest('[data-location]');if(g&&!busy&&!isComputer())dragStart={from:Number(g.dataset.location),x:e.clientX,y:e.clientY};});
 $('#board').addEventListener('pointerup',e=>{const start=dragStart;dragStart=null;if(!start||Math.hypot(e.clientX-start.x,e.clientY-start.y)<8)return;const g=e.target.closest('[data-location]');if(!g)return;const path=destinations(start.from).get(Number(g.dataset.location));if(path){moveSequence(path);suppressClick=true;setTimeout(()=>{suppressClick=false;},0);}});
 $('#board').addEventListener('pointercancel',()=>{dragStart=null;});
+document.addEventListener('click',e=>{if(!e.target.closest('nav'))document.querySelectorAll('nav details[open]').forEach(d=>d.open=false);});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){const menu=$('nav details[open]');if(menu){menu.open=false;menu.querySelector('summary').focus();}}});
 document.querySelectorAll('[data-action]').forEach(b=>b.onclick=()=>{document.querySelectorAll('nav details').forEach(d=>d.open=false);try{actions[b.dataset.action]();}catch(e){message(e.message);}});
 $('#dialog').addEventListener('cancel',e=>{if(match.pendingDouble!==null)e.preventDefault();});
 document.addEventListener('keydown',e=>{if($('#dialog').open||['INPUT','SELECT','TEXTAREA'].includes(e.target.tagName))return;if(e.key==='F2'){e.preventDefault();newDialog();}if(e.key==='F4'){e.preventDefault();showStatistics();}if(e.key==='F9'){e.preventDefault();settingsDialog();}if(e.ctrlKey||e.metaKey){const a={o:'load',s:'save',r:'roll',d:'double',f:'finish',k:'back',t:'forward',w:'swap',e:'evaluate',b:'best'}[e.key.toLowerCase()];if(a){e.preventDefault();actions[a]();return;}}if(e.code==='Space'){e.preventDefault();complete()?finish():roll();}if((e.ctrlKey||e.metaKey)&&e.key==='z'){e.preventDefault();undo();}});
