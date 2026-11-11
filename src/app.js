@@ -1,3 +1,4 @@
+import {setupLayout} from './layout.js';
 import {moveQuality} from './move-quality.js';
 import {THEMES,themeName,applyTheme} from './themes.js';
 import {checkerDestinations} from './move-options.js';
@@ -265,6 +266,7 @@ function paintEvaluation(probability,status){
   const meter=$('#evaluation-bar'),known=Number.isFinite(probability);
   const percent=known?Math.max(0,Math.min(100,probability*100)):50;
   $('#evaluation-white').style.width=percent+'%';
+  $('#evaluation-white').style.setProperty('--win-chance',percent+'%');
   $('#eval-white').textContent=checkerColor(1)+' '+(known?percent.toFixed(1)+'%':'—');
   $('#eval-black').textContent=checkerColor(-1)+' '+(known?(100-percent).toFixed(1)+'%':'—');
   $('#eval-status').textContent=status;
@@ -320,6 +322,7 @@ function updatePlayedRank(){
     const assessment=moveQuality(ranked[0].score,playedScore);
     if(!assessment){output.textContent='Move ranking unavailable';return;}
     output.dataset.quality=assessment.quality;
+    output.dataset.loss=assessment.loss.toFixed(3);
     output.title='Estimated loss versus the best evaluated move. OK: up to 0.020; Error: above 0.020; Blunder: above 0.080. Uses JellyFish scoring; match-play values are not identical to XG normalized equity.';
     output.textContent=`Your move: ${rank<0?'outside the evaluated shortlist':`#${rank+1} of ${ranked.length}`} · ${assessment.label} · estimated loss ${assessment.loss.toFixed(3)}${rank===0?' — best move':''}`;
   }).catch(()=>{if(key===playedRankKey)output.textContent='Move ranking unavailable';});
@@ -387,3 +390,5 @@ document.addEventListener('keydown',e=>{if($('#dialog').open||['INPUT','SELECT',
 reset();
 try{ai=await import('./ai-client.js');await ai.loadAI('./data/');evaluatorReady=true;render();$('#engine-status').textContent='Evaluator ready';if(isComputer()&&dice.length)computer();}catch(e){$('#engine-status').textContent='Evaluator unavailable';message(e.message);}
 window.jellyfish={getState:()=>structuredClone({board,match,player,dice,prefix,opening,busy,settings,autoplay:!!autoplay}),actions,validateSave};
+
+setupLayout(text=>modal('Fullscreen','<p>'+text+'</p>'));
