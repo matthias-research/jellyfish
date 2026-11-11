@@ -52,7 +52,8 @@ function showCubeFeedback(output){
   if(pending){output.textContent='Evaluating '+action.toLowerCase()+'…';return;}
   if(failed||!assessment){output.textContent='Cube assessment unavailable';return;}
   output.dataset.quality=assessment.quality;output.dataset.loss=assessment.loss.toFixed(3);
-  output.textContent=`${action} · ${assessment.label} · estimated cube loss ${assessment.loss.toFixed(3)}`;
+  output.textContent=assessment.quality==='ok'?'Good':assessment.label;
+  output.title=`${action} · estimated cube loss ${assessment.loss.toFixed(3)}. ${title||''}`;
 }
 function roll(){if(busy||dice.length||match.result||match.pendingDouble)return;if(opening){let a=rand(),b=rand();while(a===b){log('Opening roll tied at '+a+'. Roll again.');a=rand();b=rand();}player=a>b?1:-1;opening=false;log(name(player)+' wins the opening roll.');startTurn([a,b]);}else{if(!cubeFeedback||cubeFeedback.epoch!==epoch)assessCubeAction('No double');startTurn([rand(),rand()]);}}
 async function move(m){return moveSequence([m]);}
@@ -343,7 +344,7 @@ function updatePlayedRank(){
     output.dataset.quality=assessment.quality;
     output.dataset.loss=assessment.loss.toFixed(3);
     output.title='Estimated loss versus the best evaluated move. OK: up to 0.020; Error: above 0.020; Blunder: above 0.080. Uses JellyFish scoring; match-play values are not identical to XG normalized equity.';
-    output.textContent=`Your move: ${rank<0?'outside the evaluated shortlist':`#${rank+1} of ${ranked.length}`} · ${assessment.label} · estimated loss ${assessment.loss.toFixed(3)}${rank===0?' — best move':''}`;
+    output.textContent=assessment.quality==='ok'?'Good':assessment.label;
   }).catch(()=>{if(key===playedRankKey)output.textContent='Move ranking unavailable';});
 }
 function render(){applyTheme(settings.theme);draw();updateEvaluation();updatePlayedRank();$('#human-score').textContent=match.scores[0];$('#computer-score').textContent=match.scores[1];$('#computer-name').textContent=name(-1);$('#human-pips').textContent='Pips: '+R.pipCount(board,1);$('#computer-pips').textContent='Pips: '+R.pipCount(board,-1);$('#match-info').textContent=(match.target?match.target+' point match':'Money game')+' · Game '+match.game+(match.crawford?' · Crawford':'');let prompt=autoplay?(autoplay.stop?'Stopping after this turn…':'Finishing game — JellyFish is playing both sides…'):opening?'Roll dice to decide who starts.':busy?(turnPhase==='pause'?'JellyFish rolled '+dice.join('–')+' — pausing before moving…':turnPhase==='moving'?'Moving checker…':name(player)+' is thinking…'):match.result?'Click the board for '+(match.matchWinner?'a new match.':'the next game.') :!dice.length?name(player)+': roll dice or offer a double.':complete()?'Pick up the dice to finish your turn.':name(player)+(settings.playMode==='jellyfish'?': click a checker to use the first remaining die.':': select a checker or a highlighted destination.');if(hintText)prompt=hintText;$('#instruction').textContent=prompt;$('#roll').disabled=busy||!!dice.length||!!match.result||!!match.pendingDouble;$('#undo').disabled=busy||isComputer()||!prefix.length;$('#finish').disabled=busy||isComputer()||!complete();$('#double').disabled=busy||opening||!!dice.length||!!match.result||match.crawford||!!match.pendingDouble||(match.cubeOwner!==null&&match.cubeOwner!==player);$('#hint').disabled=busy||isComputer()||opening||!!match.result||match.pendingDouble!==null||!evaluatorReady||!ai;document.querySelectorAll('[data-action=finishGame]').forEach(button=>{button.disabled=autoplay?autoplay.stop:!canFinishGame();button.textContent=autoplay?'Stop autoplay':'Finish game';});$('#next-game').hidden=!match.result;$('#next-game').textContent=match.matchWinner?'New match':'Next game';}
