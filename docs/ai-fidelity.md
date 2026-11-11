@@ -53,3 +53,26 @@ The runtime evidence envelopes report `subject: null` and unavailable artifact i
 All seven playing levels, the observed default search limits and their candidate filters are reconstructed. The initial level-7 contact discrepancy disappeared after recovering its small-network pruning, and is now covered by an exact regression test. The original executable uses x87 extended intermediate precision; JavaScript uses IEEE-754 binary64. Captured evaluator results agree at the stated tolerance, but untested close decision boundaries can still differ. Levels 1 and 2 retain the original error distribution formula, but browser randomness is not synchronized with the Windows CRT seed/sequence. The controlled corpus does not establish exhaustive equality across all positions, settings or complete games.
 
 Full dossiers, assembly, static references and runtime evidence are retained in `rea-ai-evidence.json`. The user's unspecified original bug has not been identified or deliberately changed.
+
+
+### Cube-decision feedback
+
+The status and horizontal score field assess a human double or no-double decision
+from the position before rolling or changing the cube. The opponent's response
+is the minimum of double/take and double/pass values, independent of the response
+actually chosen. Opening rolls, Crawford and opponent-owned cubes have no
+no-double assessment. The feedback is replaced by completed checker-play feedback.
+
+This numerical feedback is a new approximation, not a recovered native score.
+It blends dead and live cube equity with fixed efficiency 0.68 (Janowski-style
+piecewise interpolation), using JellyFish's evaluated probabilities, conditional
+gammon/backgammon rates and recovered match-equity table. Match cash/take points
+are calculated recursively through successive cube values. Match losses are
+normalized by half the difference between winning and losing a single game at
+the current cube. Beyond the native table's range, its existing linear match
+approximation is used. Conditional gammon rates and cube efficiency are held
+constant; future dice and future Crawford transitions are not explicitly searched.
+The recovered computer cube policy is unchanged and can disagree with this model.
+The numerical feedback is not XG-equivalent analysis or a rollout.
+
+Model reference: [GNU Backgammon manual, Cubeful equities](https://sources.debian.org/data/main/g/gnubg/0.90%2B20091206-4/doc/gnubg/gnubg.html).

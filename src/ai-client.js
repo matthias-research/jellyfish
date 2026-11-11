@@ -13,3 +13,5 @@ export const rankTurns=(...args)=>call('rankTurns',...args);
 export const rollout=(...args)=>call('rollout',...args);
 
 export const scorePlayedBoard=(...args)=>call('scorePlayedBoard',...args);
+
+export const assessCubeDecision=(...args)=>call('assessCubeDecision',...args);

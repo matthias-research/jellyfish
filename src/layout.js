@@ -37,14 +37,16 @@ export function setupLayout(notice=()=>{}){
       target.replaceChildren(Object.assign(document.createElement('strong'),{textContent:score}),document.createTextNode(', '+pips));
       target.setAttribute('aria-label',`${label}: ${score} points, ${pips} pips`);
     }
-    for(const action of ['undo','hint'])$(`#compact-${action}`).disabled=$(`#${action}`).disabled;
-    const source=$('#move-rank'),target=$('#compact-quality'),quality=source.dataset.quality;
+    for(const action of ['double','undo','hint'])$(`#compact-${action}`).disabled=$(`#${action}`).disabled;
+    const source=$('#move-rank'),quality=source.dataset.quality;
+    for(const target of [$('#compact-quality'),$('#vertical-quality')]){
     target.textContent=quality?(Number(source.dataset.loss)===0?'0.000':'−'+source.dataset.loss):'';
     target.dataset.quality=quality||'';
     target.title=quality?source.textContent:'';
     target.setAttribute('aria-label',quality?source.textContent:'Move assessment');
+    }
   }
   const observer=new MutationObserver(sync);
-  for(const selector of ['.scoreboard','#move-rank','#undo','#hint'])observer.observe($(selector),{subtree:true,childList:true,characterData:true,attributes:true});
+  for(const selector of ['.scoreboard','#move-rank','#double','#undo','#hint'])observer.observe($(selector),{subtree:true,childList:true,characterData:true,attributes:true});
   sync();
 }

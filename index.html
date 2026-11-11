@@ -9,10 +9,10 @@
 </section>
 <aside class="horizontal-controls" aria-label="Horizontal layout controls" hidden>
 <div id="compact-human" aria-label="Your score and pips"></div>
-<div class="horizontal-buttons"><button id="compact-undo" data-action="undo">Undo</button><button id="compact-hint" data-action="hint">Hint</button><button id="vertical-layout">Vertical</button><button id="toggle-fullscreen" aria-pressed="false">Fullscreen</button></div>
-<output id="compact-quality" aria-label="Move assessment" aria-live="polite"></output>
+<div class="horizontal-buttons"><button id="compact-double" data-action="double">Double</button><button id="compact-undo" data-action="undo">Undo</button><button id="compact-hint" data-action="hint">Hint</button><button id="compact-finish-game" data-action="finishGame" title="Finish game automatically (Ctrl+A)">Finish game</button><button id="vertical-layout">Vertical</button><button id="toggle-fullscreen" aria-pressed="false">Fullscreen</button></div>
+<output class="move-score" id="compact-quality" aria-label="Move assessment" aria-live="polite"></output>
 <div id="compact-computer" aria-label="Opponent score and pips"></div>
 </aside><div class="board-wrap"><svg id="board" viewBox="0 0 1000 680" role="group" aria-label="Backgammon board"></svg></div>
-<section class="turnbar"><p aria-live="polite"><span id="move-rank"></span><span id="instruction"></span></p><button id="next-game" data-action="next" hidden>Next game</button></section>
+<section class="turnbar"><output id="vertical-quality" class="move-score" aria-label="Move assessment" aria-live="polite"></output><p aria-live="polite"><span id="move-rank"></span><span id="instruction"></span></p><button id="next-game" data-action="next" hidden>Next game</button></section>
 <details class="log"><summary>Game log</summary><ol id="log"></ol></details><footer><span id="status" role="status" aria-live="polite">Ready</span><span id="engine-status" role="status">Loading evaluator…</span></footer></main>
 <dialog id="dialog" aria-labelledby="dialog-title"><form method="dialog"><h2 id="dialog-title"></h2><div id="dialog-body"></div><div id="dialog-buttons"></div></form></dialog><input id="file" type="file" accept="application/json,.json" hidden><script type="module" src="src/app.js"></script></body></html>

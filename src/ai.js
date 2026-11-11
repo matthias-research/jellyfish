@@ -1,3 +1,4 @@
+import {assessCube} from './cube-assessment.js';
 import {legalTurns, winner} from './rules.js';
 import {contactFeatures} from './ai-features.js';
 import {nativeMoneyCube,nativeMatchCube,nativeEquityWeights} from './ai-cube.js';
@@ -267,4 +268,9 @@ export function cubeAdvice(board,player=1,{cube=1,target=0,scores=[0,0],crawford
   }
   const own=decision(player),opponent=decision(-player);
   return {offer:!crawford&&own.offer,take:opponent.take!==0,beaver:!target&&opponent.take===2,opponentTake:own.take!==0,evaluation:own.evaluation,source:'recovered native money and match cube policy'};
+}
+
+export function assessCubeDecision(board,player,options={}){
+  const advice=cubeAdvice(board,player,options);
+  return assessCube(advice.evaluation.probabilities,{...options,player});
 }
